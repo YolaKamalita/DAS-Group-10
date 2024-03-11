@@ -127,6 +127,8 @@ sapply(df[columns], function(x) sum(is.na(x)))
 
 # Exploratory Data Analysis
 
+Draw scatter plots of scores and variables for preliminary exploratory analysis
+
 ```{r}
 #| echo: true
 #| warning: false
@@ -168,6 +170,17 @@ average_ratings <- df %>%
 
 # show result
 print(average_ratings)
+
+```
+
+```{r}
+# Calculate the correlation coefficient between all the variables in df
+# Ensure that the data only contains numeric columns
+
+numeric_df <- df[sapply(df, is.numeric)]
+correlation_matrix <- cor(numeric_df, use = "complete.obs")# The 'use' parameter handles missing values
+
+print(correlation_matrix)
 
 ```
 
