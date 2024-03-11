@@ -1,0 +1,188 @@
+---
+title: "Analysis of IMDB Rating with GLM"
+format: html
+editor: visual
+---
+
+# Introduction {#sec-intro}
+
+Given the properties of films, predict whether the rating will be greater than 7 or not.
+
+```{r}
+#| echo: true
+#| warning: false
+
+library(tidyverse)
+library(gt)
+
+df <- read_csv("../data/dataset10.csv")
+
+df |> 
+  slice_head(n=5) |>
+  gt() |>
+  cols_label(
+    film_id = html("Film ID"),
+    year = html("Year"),
+    length = html("Length"),
+    budget = html("Budget"),
+    votes = html("Votes"),
+    genre = html("Genre"),
+    rating = html("Rating")
+  )
+```
+
+Description:
+
+-   Film ID: The unique identifier for the film
+-   Year: Year of release of the film in cinemas
+-   Length: Duration (in minutes)
+-   budget: Budget for the films production (in \$1000000s)
+-   votes: Number of positive votes received by viewers
+-   genre: Genre of the film
+-   rating: IMDB rating from 0-10
+
+# Data Wrangling
+
+## Missing value
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Calculate the number of NA
+# Dataset10 is replaced by we want to use
+
+na_sum <- colSums(is.na(df))
+
+par(ask = FALSE, 
+    mfrow = c(1, 1), 
+    mar = c(7, 6, 2, 2))
+
+barplot(na_sum, 
+        main = "Missing Values Count", 
+        ylab = "Count",                
+        col = "skyblue",              
+        names.arg = colnames(df), 
+        ylim = c(0, max(na_sum) + 200),
+        las=2,
+        adj=1) 
+
+text(x = 1:length(na_sum)+0.2, y = na_sum + 2, labels = na_sum, pos = 3, cex = 0.8, col = "red")
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# See how many unique values in the categorical variables
+
+discrete_columns <- sapply(df, function(x) is.factor(x) || is.character(x))
+digital_columns <- sapply(df, function(x) !is.factor(x) & !is.character(x))
+unique_values <- apply(df[, discrete_columns], 2, function(x) length(unique(x)))
+
+par(ask = FALSE, 
+    mfrow = c(1, 1), 
+    mar = c(7, 6, 2, 2))
+
+barplot(unique_values,
+        main='the number of unique values',
+        col='skyblue',
+        names.arg=colnames(unique_values),
+        las=2)
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Creating a new column to categorize ratings higher then 7 or not
+library(tidyverse)
+
+df <- df %>% 
+  mutate(rating_new = ifelse(rating <= 7, "<= 7", "> 7"))
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Filling missing values with mode
+
+modes <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+columns <- c('length')
+
+for (column in columns) {
+  # get the mode of each column
+  mode_value <- as.character(modes(df[[column]]))
+  # replace missing values with modes
+  df[[column]][is.na(df[[column]])] <- mode_value
+}
+
+# show the result of filling the missing values
+sapply(df[columns], function(x) sum(is.na(x)))
+```
+
+# Exploratory Data Analysis
+
+```{r}
+#| echo: true
+#| warning: false
+
+library(ggplot2)
+
+summary(df)
+
+ggplot(df, aes(x = year, y = rating)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Rating vs Year", x = "Year", y = "Rating")
+
+ggplot(df, aes(x = length, y = rating)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Rating vs Length", x = "Length", y = "Rating")
+
+ggplot(df, aes(x = budget, y = rating)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Rating vs Budget", x = "Budget", y = "Rating")
+
+ggplot(df, aes(x = votes, y = rating)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
+
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+library(ggplot2)
+library(gridExtra)
+
+p1 <- ggplot(data = df, mapping = aes(x = rating_new, y = year)) +
+  geom_boxplot(fill = "steelblue")
+
+p2 <- ggplot(data = df, mapping = aes(x = rating_new, y = length)) +
+  geom_boxplot(fill = "steelblue")
+
+p3 <- ggplot(data = df, mapping = aes(x = rating_new, y = budget)) +
+  geom_boxplot(fill = "steelblue")
+
+p4 <- ggplot(data = df, mapping = aes(x = rating_new, y = votes)) +
+  geom_boxplot(fill = "steelblue")
+
+p5 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_new, fill=rating_new)) + 
+  geom_bar(position="dodge", stat="count") +
+  labs(y = "Proportion")
+
+grid.arrange(p1, p2, p3, p4, ncol=2)
+p5
+```
+
+# Statistical Analysis (GLM)
