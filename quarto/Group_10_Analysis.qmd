@@ -49,8 +49,7 @@ Description:
 #| echo: true
 #| warning: false
 
-# Calculate the number of NA
-# Dataset10 is replaced by we want to use
+# Calculate the number of NA and visualize it
 
 na_sum <- colSums(is.na(df))
 
@@ -155,6 +154,20 @@ ggplot(df, aes(x = votes, y = rating)) +
   geom_point() +
   theme_minimal() +
   labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
+
+```
+
+```{r}
+# Calculate the average rating for each type of movie
+library(dplyr)
+average_ratings <- df %>%
+  group_by(genre) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE)) %>%
+  ungroup() %>%  # Make sure that grouping is removed so that all results can be sorted
+  arrange(desc(average_rating))
+
+# show result
+print(average_ratings)
 
 ```
 
