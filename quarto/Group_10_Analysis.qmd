@@ -194,7 +194,7 @@ p5 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_new, fill=rating_new)
   geom_bar(position="dodge", stat="count") +
   labs(y = "Proportion")
 
-grid.arrange(p1, p2, p3, p4, ncol=2)
+grid.arrange(p1, p2, p3, p4, ncol=2)#This part of the code has reported an error, but I can not solve it, I do not know what the problem is
 p5
 ```
 
