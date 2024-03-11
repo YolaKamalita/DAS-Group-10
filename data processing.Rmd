@@ -1,0 +1,53 @@
+---
+title: "data checking"
+output: html_document
+date: "2024-03-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Missing value
+
+```{r}
+#calculate the number of NA
+#dataset10 is replaced by we want to use
+na_sum <- colSums(is.na(dataset10))
+
+par(ask = FALSE, 
+    mfrow = c(1, 1), 
+    mar = c(7, 6, 2, 2))
+
+barplot(na_sum, 
+        main = "Missing Values Count", 
+        ylab = "Count",                
+        col = "skyblue",              
+        names.arg = colnames(dataset10), 
+        ylim = c(0, max(na_sum) + 200),
+        las=2,
+        adj=1) 
+
+text(x = 1:length(na_sum)+0.2, y = na_sum + 2, labels = na_sum, pos = 3, cex = 0.8, col = "red")
+```
+
+```{r}
+modes <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+columns <- c('column name we hope to fill')
+
+for (column in columns) {
+  # get the mode of each column
+  mode_value <- as.character(modes(dataset10[[column]]))
+  # replace missing values with modes
+  dataset10[[column]][is.na(dataset10[[column]])] <- mode_value
+}
+
+# show the result of filling the missing values
+sapply(dataset10[columns], function(x) sum(is.na(x)))
+```
+
+## 
