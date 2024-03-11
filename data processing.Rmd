@@ -50,4 +50,21 @@ for (column in columns) {
 sapply(dataset10[columns], function(x) sum(is.na(x)))
 ```
 
+```{r}
+# see how many unique values in the categorical variables
+discrete_columns <- sapply(dataset10, function(x) is.factor(x) || is.character(x))
+digital_columns <- sapply(dataset10, function(x) !is.factor(x) & !is.character(x))
+unique_values <- apply(dataset10[, discrete_columns], 2, function(x) length(unique(x)))
+
+par(ask = FALSE, 
+    mfrow = c(1, 1), 
+    mar = c(7, 6, 2, 2))
+
+barplot(unique_values,
+        main='the number of unique values',
+        col='skyblue',
+        names.arg=colnames(unique_values),
+        las=2)
+```
+
 ## 
