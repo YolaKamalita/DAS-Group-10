@@ -139,7 +139,7 @@ my_skim <- skim_with(base = sfl(n = length),
 knit_print(my_skim(IMDB ))
 ```
 
-Based on the summary tables, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then mean and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
+Based on the summary tables, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then budget and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
 
 ## Correlation
 
