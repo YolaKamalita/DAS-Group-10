@@ -1,6 +1,6 @@
 ---
 title: "Analysis of IMDB Rating with GLM"
-format: html
+format: pdf
 editor: visual
 ---
 
