@@ -1,12 +1,12 @@
 ---
 title: "Analysis of IMDB Rating with GLM"
-format: html
+format: pdf
 editor: visual
 ---
 
 # Introduction {#sec-intro}
 
-Given the properties of films, predict whether the rating will be greater than 7 or not.
+The research question is to examine whether the rating will be greater than 7 or not given the properties of films, such as length or duration, budget, votes, genre, and year of release.
 
 ```{r}
 #| echo: true
@@ -15,8 +15,10 @@ Given the properties of films, predict whether the rating will be greater than 7
 library(tidyverse)
 library(gt)
 
+# Read CSV from data dir
 df <- read_csv("../data/dataset10.csv")
 
+# Display the first 5 rows
 df |> 
   slice_head(n=5) |>
   gt() |>
@@ -36,94 +38,96 @@ Description:
 -   Film ID: The unique identifier for the film
 -   Year: Year of release of the film in cinemas
 -   Length: Duration (in minutes)
--   budget: Budget for the films production (in \$1000000s)
--   votes: Number of positive votes received by viewers
--   genre: Genre of the film
--   rating: IMDB rating from 0-10
-
-# Data Wrangling
-
-## Missing value
+-   Budget: Budget for the films production (in \$1000000s)
+-   Votes: Number of positive votes received by viewers
+-   Genre: Genre of the film
+-   Rating: IMDB rating from 0-10
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# Calculate the number of NA
-# Dataset10 is replaced by we want to use
+library(skimr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(stats)
+library(jtools)
+library(sjPlot)
+library(broom)
+library(huxtable)
+```
 
+# Data Wrangling
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Calculate the number of NA for each column
+
+# Checking NAs
 na_sum <- colSums(is.na(df))
 
-par(ask = FALSE, 
-    mfrow = c(1, 1), 
-    mar = c(7, 6, 2, 2))
-
-barplot(na_sum, 
+# Plotting number of NAs
+bp <- barplot(na_sum, 
         main = "Missing Values Count", 
         ylab = "Count",                
         col = "skyblue",              
         names.arg = colnames(df), 
         ylim = c(0, max(na_sum) + 200),
-        las=2,
-        adj=1) 
-
-text(x = 1:length(na_sum)+0.2, y = na_sum + 2, labels = na_sum, pos = 3, cex = 0.8, col = "red")
+        las=1) 
+text(x = bp, y = na_sum + 2, 
+     labels = na_sum, pos = 3, 
+     col = "red")
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# See how many unique values in the categorical variables
+# Number of unique values in the categorical variables
 
-discrete_columns <- sapply(df, function(x) is.factor(x) || is.character(x))
-digital_columns <- sapply(df, function(x) !is.factor(x) & !is.character(x))
-unique_values <- apply(df[, discrete_columns], 2, function(x) length(unique(x)))
+# Convert film_id as character
+df[c("film_id")] <- lapply(df[c("film_id")], as.character)
 
-par(ask = FALSE, 
-    mfrow = c(1, 1), 
-    mar = c(7, 6, 2, 2))
+# Compute number of unique values
+categorical_columns <- sapply(df, 
+                              function(x) is.factor(x) || is.character(x))
+unique_values <- apply(df[, categorical_columns], 
+                       2, 
+                       function(x) length(unique(x)))
 
-barplot(unique_values,
-        main='the number of unique values',
-        col='skyblue',
-        names.arg=colnames(unique_values),
-        las=2)
+# Convert the output to be DataFrame
+columns.freq <- table(unique_values)
+columns.freq <- as.data.frame(columns.freq)
+colnames(columns.freq) <- c("columns", "number")
+
+# Creating barplot
+bp <- barplot(unique_values,
+              main='the number of unique values',
+              col='skyblue',
+              names.arg=colnames(unique_values),
+              ylim = c(0, max(unique_values) + 200),
+              legend.text = colnames(unique_values),
+              las=1)
+text(x = bp,
+     y = unique_values+75,
+     labels = unique_values)
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# Creating a new column to categorize ratings higher then 7 or not
-library(tidyverse)
-
+# Create new columns: rating_higher_than_7
 df <- df %>% 
-  mutate(rating_new = ifelse(rating <= 7, "<= 7", "> 7"))
-```
+  mutate(rating_higher_than_7 = ifelse(rating <= 7, 0, 1))
 
-```{r}
-#| echo: true
-#| warning: false
-
-# Filling missing values with mode
-
-modes <- function(x) {
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-
-columns <- c('length')
-
-for (column in columns) {
-  # get the mode of each column
-  mode_value <- as.character(modes(df[[column]]))
-  # replace missing values with modes
-  df[[column]][is.na(df[[column]])] <- mode_value
-}
-
-# show the result of filling the missing values
-sapply(df[columns], function(x) sum(is.na(x)))
+# Remove NAs
+df <- na.omit(df)
 ```
 
 # Exploratory Data Analysis
@@ -132,57 +136,197 @@ sapply(df[columns], function(x) sum(is.na(x)))
 #| echo: true
 #| warning: false
 
-library(ggplot2)
+# Creating summary statistics
 
-summary(df)
+# Remove non-numeric columns
+IMDB <- df[, !names(df) %in% c("film_id", "genre", "rating_higher_than_7")]
 
-ggplot(df, aes(x = year, y = rating)) +
-  geom_point() +
-  theme_minimal() +
-  labs(title = "Rating vs Year", x = "Year", y = "Rating")
+# Summary statistics with adjusted skim()
+my_skim <- skim_with(base = sfl(n = length), 
+                     numeric = sfl(p0 = NULL, p100 = NULL,hist = NULL))
+knit_print(my_skim(IMDB ))
+```
 
-ggplot(df, aes(x = length, y = rating)) +
-  geom_point() +
-  theme_minimal() +
-  labs(title = "Rating vs Length", x = "Length", y = "Rating")
+```{r}
 
-ggplot(df, aes(x = budget, y = rating)) +
-  geom_point() +
-  theme_minimal() +
-  labs(title = "Rating vs Budget", x = "Budget", y = "Rating")
+#| echo: true
+#| warning: false
 
-ggplot(df, aes(x = votes, y = rating)) +
-  geom_point() +
-  theme_minimal() +
-  labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
-
+# Creating correlation heatmap
+corrplot(cor(IMDB), method = "color", 
+         type = "lower", addCoef.col = 'grey')
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-library(ggplot2)
-library(gridExtra)
+# Creating scatterplot between rating and explanatory variables
 
-p1 <- ggplot(data = df, mapping = aes(x = rating_new, y = year)) +
-  geom_boxplot(fill = "steelblue")
+# Rating vs. Year
+p1 <- ggplot(df, aes(x = year, y = rating, 
+                     color = rating_higher_than_7)) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Year", x = "Year", y = "Rating")
 
-p2 <- ggplot(data = df, mapping = aes(x = rating_new, y = length)) +
-  geom_boxplot(fill = "steelblue")
+# Rating vs. Length
+p2 <- ggplot(df, aes(x = length, y = rating, 
+                     color = rating_higher_than_7)) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Length", x = "Length", y = "Rating")
 
-p3 <- ggplot(data = df, mapping = aes(x = rating_new, y = budget)) +
-  geom_boxplot(fill = "steelblue")
+# Rating vs. Budget
+p3 <- ggplot(df, aes(x = budget, y = rating, 
+                     color = rating_higher_than_7)) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Budget", x = "Budget", y = "Rating")
 
-p4 <- ggplot(data = df, mapping = aes(x = rating_new, y = votes)) +
-  geom_boxplot(fill = "steelblue")
+# Rating vs. Votes
+p4 <- ggplot(df, aes(x = votes, y = rating, 
+                     color = rating_higher_than_7)) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
 
-p5 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_new, fill=rating_new)) + 
-  geom_bar(position="dodge", stat="count") +
-  labs(y = "Proportion")
-
+# Plot in Grid
 grid.arrange(p1, p2, p3, p4, ncol=2)
-p5
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Creating boxplot and barplot between rating_higher_than_7 and explanatory variables
+
+# Rating > 7 vs. Year
+p1 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = year)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Year", x = "Rating > 7")
+
+# Rating > 7 vs. Length
+p2 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = length)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Length", x = "Rating > 7")
+
+# Rating > 7 vs. Budget
+p3 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = budget)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Budget", x = "Rating > 7")
+
+# Rating > 7 vs. Votes
+p4 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = votes)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Votes", x = "Rating > 7")
+
+# Rating > 7 vs. Genre
+p6 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_higher_than_7, fill=rating_higher_than_7)) +
+  geom_bar(position="dodge", stat="count") +
+  labs(y = "Proportion") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Plot in Grid
+grid.arrange(arrangeGrob(p1, p2, p3, p4, ncol=2), 
+             p6, nrow=2, heights = c(2, 1))
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Calculate proportions of rating > 7 for each genre categories
+proportions <- df %>%
+  group_by(genre) %>%
+  summarize(proportion_higher_than_7 = 100*round(mean(rating_higher_than_7, na.rm = TRUE),4))
+
+# Create barplot
+ggplot(proportions, aes(x = genre, y = proportion_higher_than_7)) +
+  geom_bar(stat = "identity", fill = "skyblue", width = 0.5) +
+  labs(x = "Genre", y = "Proportions of Rating > 7",
+       title = "Proportions of Rating > 7 Grouping by Genre") +
+  geom_text(aes(label = round(proportion_higher_than_7, 2)), vjust = -0.5, color = "black", size = 3.5)
 ```
 
 # Statistical Analysis (GLM)
+
+## Model Fitting
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Fitting the model
+model <- glm(rating_higher_than_7 ~ length + budget + votes + genre, 
+             data = df, 
+             family = binomial(link = "logit"))
+
+# Display the model summary (log-odds)
+model %>%
+  summary()
+
+# Display CI for the log-odds
+confint(model) %>%
+  kable()
+```
+
+Based on the result, the log-odds coefficients for budget and votes are positive indicating the higher their values then the rating will be more likely to be higher than 7. Furthermore, the log-odds coefficients for length is negative, and it indicates that the lower the values, the rating to be higher than 7 is more likely. These coefficients are statistically significant because the P-values are lower than 0.05 and Confidence Intervals (CI) do not contain 0. There are some coefficients which are not statistically significant, such as genre:Animation and genre:Romance.
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Plot Odds Ratios for each parameters
+plot_model(model, show.values=TRUE)
+```
+
+In this analysis, the baseline for Genre is Action. For Comedy, Documentary, and Short, the odds ratios compared to the baseline, Action, has values much higher than 1. For example, Comedy's odds of having rating higher than 7 is 25.06 times those of Action films. However, the Animation's odds is 0.43 times to Action's odds, and this is not align with the fact that Animation's proportion (of having rating higher than 7) is bigger than Action. Moreover, that is not statistically significant.
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Plot predicted probabilities of having rating higher than 7
+plot_model(model,type="pred",terms=c("length","genre"))
+plot_model(model,type="pred",terms=c("budget","genre"))
+plot_model(model,type="pred",terms=c("votes","genre"))
+```
+
+Other than Romance genre, the probabilities of having rating higher than 7 decreasing by length and increasing by votes and budget. It can be seen from the log-odds and odds sign as well.
+
+## Model Selection
+
+```{r export_summary, results='asis'}
+
+#| echo: true
+#| warning: false
+#| error: false
+
+# Comparing models with different explanatory variables
+
+model_2 <- glm(rating_higher_than_7 ~ year + length + budget + votes + genre, 
+               data = df, 
+               family = binomial(link = "logit"))
+model_3 <- glm(rating_higher_than_7 ~ length + budget + genre, 
+               data = df, 
+               family = binomial(link = "logit"))
+
+suppressWarnings(export_summs(model, model_2, model_3,
+                error_format = "[{conf.low}, {conf.high}]"))
+```
+
+After doing some investigations, the model without year (model 1) is the one that can give the lowest AIC. Removing votes (model 3) does not make the AIC becoming lower and BIC is also only resulted in a slightly lower. Hence, model 1 is selected to be the final model.
+
+# Conclusion
+
+Discussion required.
