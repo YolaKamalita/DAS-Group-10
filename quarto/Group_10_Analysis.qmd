@@ -6,7 +6,7 @@ editor: visual
 
 # Introduction {#sec-intro}
 
-Given the properties of films, predict whether the rating will be greater than 7 or not.
+The research question is to examine whether the rating will be greater than 7 or not given the properties of films, such as length or duration, budget, votes, genre, and year of release.
 
 ```{r}
 #| echo: true
@@ -15,8 +15,10 @@ Given the properties of films, predict whether the rating will be greater than 7
 library(tidyverse)
 library(gt)
 
+# Read CSV from data dir
 df <- read_csv("../data/dataset10.csv")
 
+# Display the first 5 rows
 df |> 
   slice_head(n=5) |>
   gt() |>
@@ -36,179 +38,244 @@ Description:
 -   Film ID: The unique identifier for the film
 -   Year: Year of release of the film in cinemas
 -   Length: Duration (in minutes)
--   budget: Budget for the films production (in \$1000000s)
--   votes: Number of positive votes received by viewers
--   genre: Genre of the film
--   rating: IMDB rating from 0-10
-
-# Data Wrangling
-
-## Missing value
+-   Budget: Budget for the films production (in \$1000000s)
+-   Votes: Number of positive votes received by viewers
+-   Genre: Genre of the film
+-   Rating: IMDB rating from 0-10
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# Calculate the number of NA and visualize it
+library(skimr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(stats)
+library(jtools)
+library(sjPlot)
+library(broom)
+library(huxtable)
+```
 
+# Data Wrangling
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Calculate the number of NA for each column
+
+# Checking NAs
 na_sum <- colSums(is.na(df))
 
-par(ask = FALSE, 
-    mfrow = c(1, 1), 
-    mar = c(7, 6, 2, 2))
-
-barplot(na_sum, 
+# Plotting number of NAs
+bp <- barplot(na_sum, 
         main = "Missing Values Count", 
         ylab = "Count",                
         col = "skyblue",              
         names.arg = colnames(df), 
         ylim = c(0, max(na_sum) + 200),
-        las=2,
-        adj=1) 
-
-text(x = 1:length(na_sum)+0.2, y = na_sum + 2, labels = na_sum, pos = 3, cex = 0.8, col = "red")
+        las=1) 
+text(x = bp, y = na_sum + 2, 
+     labels = na_sum, pos = 3, 
+     col = "red")
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# See how many unique values in the categorical variables
+# Number of unique values in the categorical variables
 
-discrete_columns <- sapply(df, function(x) is.factor(x) || is.character(x))
-digital_columns <- sapply(df, function(x) !is.factor(x) & !is.character(x))
-unique_values <- apply(df[, discrete_columns], 2, function(x) length(unique(x)))
+# Convert film_id as character
+df[c("film_id")] <- lapply(df[c("film_id")], as.character)
 
-par(ask = FALSE, 
-    mfrow = c(1, 1), 
-    mar = c(7, 6, 2, 2))
+# Compute number of unique values
+categorical_columns <- sapply(df, 
+                              function(x) is.factor(x) || is.character(x))
+unique_values <- apply(df[, categorical_columns], 
+                       2, 
+                       function(x) length(unique(x)))
 
-barplot(unique_values,
-        main='the number of unique values',
-        col='skyblue',
-        names.arg=colnames(unique_values),
-        las=2)
+# Convert the output to be DataFrame
+columns.freq <- table(unique_values)
+columns.freq <- as.data.frame(columns.freq)
+colnames(columns.freq) <- c("columns", "number")
+
+# Creating barplot
+bp <- barplot(unique_values,
+              main='the number of unique values',
+              col='skyblue',
+              names.arg=colnames(unique_values),
+              ylim = c(0, max(unique_values) + 200),
+              legend.text = colnames(unique_values),
+              las=1)
+text(x = bp,
+     y = unique_values+75,
+     labels = unique_values)
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-# Creating a new column to categorize ratings higher then 7 or not
-library(tidyverse)
-
+# Create new columns: rating_higher_than_7
 df <- df %>% 
-  mutate(rating_new = ifelse(rating <= 7, "<= 7", "> 7"))
-```
+  mutate(rating_higher_than_7 = ifelse(rating <= 7, 0, 1))
 
-```{r}
-#| echo: true
-#| warning: false
-
-# Filling missing values with mode
-
-modes <- function(x) {
-  ux <- unique(x)
-  ux[which.max(tabulate(match(x, ux)))]
-}
-
-columns <- c('length')
-
-for (column in columns) {
-  # get the mode of each column
-  mode_value <- as.character(modes(df[[column]]))
-  # replace missing values with modes
-  df[[column]][is.na(df[[column]])] <- mode_value
-}
-
-# show the result of filling the missing values
-sapply(df[columns], function(x) sum(is.na(x)))
+# Remove NAs
+df <- na.omit(df)
 ```
 
 # Exploratory Data Analysis
 
-Draw scatter plots of scores and variables for preliminary exploratory analysis
+```{r}
+#| echo: true
+#| warning: false
+
+# Creating summary statistics
+
+# Remove non-numeric columns
+IMDB <- df[, !names(df) %in% c("film_id", "genre", "rating_higher_than_7")]
+
+# Summary statistics with adjusted skim()
+my_skim <- skim_with(base = sfl(n = length), 
+                     numeric = sfl(p0 = NULL, p100 = NULL,hist = NULL))
+knit_print(my_skim(IMDB ))
+```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-library(ggplot2)
+# Calculate the correlation coefficient between numeric variables
 
-summary(df)
+# Filter out non-numeric columns
+numeric_df <- df[sapply(df, is.numeric)]
 
-ggplot(df, aes(x = year, y = rating)) +
+# Compute correlation matrix
+correlation_matrix <- cor(numeric_df, use = "complete.obs")
+
+# Creating correlation heatmap
+corrplot(cor(IMDB), method = "color", 
+         type = "lower", addCoef.col = 'grey')
+```
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Creating scatterplot between rating and explanatory variables
+
+# Rating vs. Year
+p1 <- ggplot(df, aes(x = year, y = rating, 
+                     color = rating_higher_than_7)) +
   geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
   theme_minimal() +
+  theme(legend.position = "none") +
   labs(title = "Rating vs Year", x = "Year", y = "Rating")
 
-ggplot(df, aes(x = length, y = rating)) +
+# Rating vs. Length
+p2 <- ggplot(df, aes(x = length, y = rating, 
+                     color = rating_higher_than_7)) +
   geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
   theme_minimal() +
+  theme(legend.position = "none") +
   labs(title = "Rating vs Length", x = "Length", y = "Rating")
 
-ggplot(df, aes(x = budget, y = rating)) +
+# Rating vs. Budget
+p3 <- ggplot(df, aes(x = budget, y = rating, 
+                     color = rating_higher_than_7)) +
   geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
   theme_minimal() +
+  theme(legend.position = "none") +
   labs(title = "Rating vs Budget", x = "Budget", y = "Rating")
 
-ggplot(df, aes(x = votes, y = rating)) +
+# Rating vs. Votes
+p4 <- ggplot(df, aes(x = votes, y = rating, 
+                     color = rating_higher_than_7)) +
   geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
   theme_minimal() +
+  theme(legend.position = "none") +
   labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
 
-```
-
-```{r}
-# Calculate the average rating for each type of movie
-library(dplyr)
-average_ratings <- df %>%
-  group_by(genre) %>%
-  summarise(average_rating = mean(rating, na.rm = TRUE)) %>%
-  ungroup() %>%  # Make sure that grouping is removed so that all results can be sorted
-  arrange(desc(average_rating))
-
-# show result
-print(average_ratings)
-
-```
-
-```{r}
-# Calculate the correlation coefficient between all the variables in df
-# Ensure that the data only contains numeric columns
-
-numeric_df <- df[sapply(df, is.numeric)]
-correlation_matrix <- cor(numeric_df, use = "complete.obs")# The 'use' parameter handles missing values
-
-print(correlation_matrix)
-
+# Plot in Grid
+grid.arrange(p1, p2, p3, p4, ncol=2)
 ```
 
 ```{r}
 #| echo: true
 #| warning: false
 
-library(ggplot2)
-library(gridExtra)
+# Creating boxplot and barplot between rating_higher_than_7 and explanatory variables
 
-p1 <- ggplot(data = df, mapping = aes(x = rating_new, y = year)) +
-  geom_boxplot(fill = "steelblue")
+# Rating > 7 vs. Year
+p1 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = year)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Year", x = "Rating > 7")
 
-p2 <- ggplot(data = df, mapping = aes(x = rating_new, y = length)) +
-  geom_boxplot(fill = "steelblue")
+# Rating > 7 vs. Length
+p2 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = length)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Length", x = "Rating > 7")
 
-p3 <- ggplot(data = df, mapping = aes(x = rating_new, y = budget)) +
-  geom_boxplot(fill = "steelblue")
+# Rating > 7 vs. Budget
+p3 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = budget)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Budget", x = "Rating > 7")
 
-p4 <- ggplot(data = df, mapping = aes(x = rating_new, y = votes)) +
-  geom_boxplot(fill = "steelblue")
+# Rating > 7 vs. Votes
+p4 <- ggplot(data = df, mapping = aes(x = factor(rating_higher_than_7), y = votes)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(y = "Votes", x = "Rating > 7")
 
-p5 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_new, fill=rating_new)) + 
+# Rating > 7 vs. Genre
+p6 <- ggplot(df, aes(x= genre,  y = ..prop.., group=rating_higher_than_7, fill=rating_higher_than_7)) +
   geom_bar(position="dodge", stat="count") +
-  labs(y = "Proportion")
+  labs(y = "Proportion") +
+  theme_minimal() +
+  theme(legend.position = "none")
 
-grid.arrange(p1, p2, p3, p4, ncol=2)#This part of the code has reported an error, but I can not solve it, I do not know what the problem is
-p5
+# Plot in Grid
+grid.arrange(arrangeGrob(p1, p2, p3, p4, ncol=2), 
+             p6, nrow=2, heights = c(2, 1))
 ```
 
-# Statistical Analysis (GLM)
+```{r}
+#| echo: true
+#| warning: false
+
+# Calculate proportions of rating > 7 for each genre categories
+ratings_genre <- df %>%
+  group_by(genre) %>%
+  summarize(
+    proportion_higher_than_7 = round(mean(rating_higher_than_7, na.rm = TRUE),3),
+    average_rating = round(mean(rating, na.rm = TRUE),2)
+    ) %>%
+  ungroup() %>% # Grouping is removed so it can be sorted
+  arrange(desc(average_rating))
+
+# Create barplot
+ggplot(ratings_genre, aes(x = genre)) +
+  geom_bar(aes(y = proportion_higher_than_7), 
+           stat = "identity", fill = "skyblue", width = 0.5) +
+  geom_point(aes(y = average_rating),
+            stat="identity",color="red",size=2)+
+  labs(x = "Genre", y = "Proportions of Rating > 7",
+       title = "Rating vs. Genre") +
+  scale_y_continuous(sec.axis=sec_axis(~.,name="Average of Rating")) +
+  geom_text(aes(y = proportion_higher_than_7,
+                label = round(proportion_higher_than_7, 2)), 
+            vjust = -0.5, color = "black", size = 3.5) +
+  geom_text(aes(y = average_rating,label = average_rating), 
+            vjust = -0.5, color = "black", size = 3.5)
+```
+
+# 
