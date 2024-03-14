@@ -399,22 +399,40 @@ confint(model) %>%
   kable()
 ```
 
+Logistic Regression can be written as:
+
+$$
+log(\frac{P_i}{1-P_i}) = \alpha + \beta_{budget} \cdot {budget}_i + \beta_{length} \cdot {length}_i + \beta_{\text{Animation}} \cdot \mathbb{I}_{\text{Animation}}(i) + \beta_{\text{Comedy}} \cdot \mathbb{I}_{\text{Comedy}}(i) +
+$$
+
+$$
+\beta_{\text{Documentary}} \cdot \mathbb{I}_{\text{Documentary}}(i) + \beta_{\text{Drama}} \cdot \mathbb{I}_{\text{Drama}}(i) + \beta_{\text{Romance}} \cdot \mathbb{I}_{\text{Romance}}(i) + \beta_{\text{Short}} \cdot \mathbb{I}_{\text{Short}}(i)
+$$
+
+where $\beta_{\text{Genre}} \cdot \mathbb{I}_{\text{Genre}}$ is an indicator function such that
+
+$$
+\mathbb{I}_{\mbox{Genre}}(x)=\left\{
+                \begin{array}{ll}
+                  1 ~~~ \mbox{xth observation is part of the genre},\\
+                  0 ~~~ \mbox{Otherwise}.\\
+                \end{array}
+              \right.
+$$
+
 Based on the result, the log-odds coefficients for budget is positive indicating the higher their values then the rating higher than 7 will be more likely. Furthermore, the log-odds coefficients for length is negative, and it indicates that the lower the values, the rating to be higher than 7 is more likely. These coefficients are statistically significant because the P-values are lower than 0.05 and practically significant because Confidence Intervals (CI) do not contain 0. There are some coefficients which are not statistically significant, such as genreAnimation and genreRomance.
 
 ```{r}
-#| echo: false
-#| warning: false
+#| echo: true
+#| warning: true
 
-# Display Deviance
-print(paste("Residual Deviance:", summary(model)$deviance))
-print(paste("Null Deviance:", summary(model)$null.deviance))
+# Hosmer-Lemeshow goodness of fit test
+
+source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
+HLTest(model, g=6)
 ```
 
-Next, hypothesis testing using Deviance can be used to compare nested models $M_0$ and $M_1$. Null deviance $D_0$ is the deviance from model with intercept only and $D_1$ is the deviance from model of interest (intercept + predictors). In this case, $H_0$ is $M_0$ is more likely ( $\beta$ = $\beta_0$ ). Since, $D_0$ - $D_1$ = 1128.12 \> $\chi^2(0.95;8)$ = 15.507, $H_0$ is rejected. So, retaining length, budget, and budget is worthwhile.
-
-Furthermore, if the model is a good of fit, the residual deviance $D_1$ = 726.85 should approximately follow $\chi^2(0.95;n-p)$ = $\chi^2(0.95;1427)$ = 1515.995. Then, since 726.85 \< 1515.995, there is no evidence of lack of fit and the number of samples are reasonably large.
-
-One caveat of using this model is genreAnimation and genreRomance are not statistically significant. However, if genre is being removed, AIC will increase drastically to 1298. It is reasonable to keep genre as there is no evidence of lack of fit.
+Next, Hosmer-Lemeshow goodness of fit test is performed. Large P-values indicates no evidence for lack of fit. However, some expected counts are less than 5, so the test might not be very reliable. One caveat of using this model is genreAnimation and genreRomance are not statistically significant. However, if genre is being removed, AIC will increase drastically to 1298. It is reasonable to keep genre as there is no evidence of lack of fit. Moreover, checking residuals for model diagnostic is not informative for binary response variable.
 
 ```{r}
 #| echo: true
@@ -511,6 +529,6 @@ In this part, the one in the left (Model 3) is model which has observations with
 
 # Conclusion {#sec-conclusion}
 
--   The model which has budget, length, and genre as the predictors are chosen to be the best model. The AIC is slightly lower than model which also has year and votes as the predictors, but BIC is higher. In this case, simpler model is chosen.
+-   The model which has budget, length, and genre as the predictors is chosen to be the best model. The AIC is slightly lower than model which also has year and votes as the predictors, but BIC is higher. In this case, simpler model is chosen.
 
--   The caveat from this model that it has coefficients which are statistically significant (genreAnimation and genreRomance). However, if genre is being removed, AIC will increase significantly. It is better to have genre as predictors as well. The hypothesis on Deviance also shows no evidence for lack of fit.
+-   The caveat from this model that it has coefficients which are not statistically significant (genreAnimation and genreRomance). However, if genre is being removed, AIC will increase significantly. It is better to have genre as predictors as well. The hypothesis on Hosmer-Lemeshow also shows no evidence for lack of fit.
