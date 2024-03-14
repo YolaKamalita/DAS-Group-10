@@ -507,7 +507,7 @@ Removing year and votes will not significantly reduce AIC, but improving BIC qui
 #| echo: true
 #| warning: false
 #| label: tbl-summary-comparison-lm
-#| tbl-cap: Hypothesis Testing and Goodness of fit.
+#| tbl-cap: Hypothesis Testing and Goodness of fit. The one in the left is model which has observations with rating <= 7 and the one on the right having observation with rating > 7.
 
 # Fitting the model_3 (rating > 7) and model_4 (rating <= 7)
 
@@ -523,7 +523,7 @@ suppressWarnings(export_summs(model_3, model_4,
                 error_format = "[{conf.low}, {conf.high}]"))
 ```
 
-In this part, the one in the left (Model 3) is model which has observations with rating \<= 7 and the one on the right (Model 4) having observation with rating \> 7. They are fitted separately in order to analyze the effects of variables separately on high-scoring and low-scoring movies. In model 4, when rating is higher than 7, budget has a higher impact on rating than lenght. As the budget gets higher then rating is also getting higher, but we see the opposite for the length. For Model 3, the rating gets higher as the budget and length getting higher. However, for both models, the coefficients are not statistically and practically significant.
+In this part, the one in the left (Model 3) is model which has observations with rating \<= 7 and the one on the right (Model 4) having observation with rating \> 7. They are fitted separately in order to analyze the effects of variables separately on high-scoring and low-scoring movies. In model 4, when rating is higher than 7, budget has a higher impact on rating than length. As the budget gets higher then rating is also getting higher, but we see the opposite for the length. For Model 3, the rating gets higher as the budget and length getting higher. However, for both models, the coefficients are not statistically and practically significant.
 
 \clearpage
 
