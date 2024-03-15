@@ -4,7 +4,7 @@
 In this analysis, the research question is to investigate which properties of films influence whether IMDB rating exceeding 7 or not. The Generalized Linear Model for binary response variables, Logistic Regression, will be used to investigate the relationship between binary rating (i.e., 1 if greater than 7 and 0 otherwise) and film properties.
 
 
-# Installation and Setup
+## Installation and Setup
 ---
 
 R and quarto installation is required as the main tools for doing the statistical analysis and reporting. Here is the list of R packages which are needed to be installed in order to run the main .qmd file in the local machine:
@@ -27,7 +27,7 @@ install.packages(zoo)
 ```
 
 
-# Data
+## Data
 ---
 
 IMDB rating dataset which is preprocessed by Data Analytics (Statistics) department from University of Glasgow as the playground dataset for learning purposes.
@@ -46,7 +46,7 @@ Description:
 - Rating: IMDB rating from 0-10.
 
 
-# Code structure
+## Code structure
 ---
 
 ```
@@ -60,7 +60,7 @@ Description:
 ```
 
 
-# Results
+## Results
 ---
 
 In summary, budget and length have significant relationship to binary rating, whether greater than 7 or not. For Genre, two of them are not statistically significant: Animation and Romance.
