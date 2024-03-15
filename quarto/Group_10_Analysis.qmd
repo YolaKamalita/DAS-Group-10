@@ -16,13 +16,13 @@ execute:
 
 Studying the factors that can affect film ratings is an interesting topic to be explored. IMDB dataset containing information about film rating and their properties, such as length or duration, budget, votes, year of release, and genre. There are 1495 films (Film ID) included in the dataset.
 
-In this analysis, the research question is to investigate which properties of films influence IMDB rating, specifically whether they are likely to be greater than 7 or not. The binary rating (i.e., 1 if greater than 7, 0 otherwise) will be the response variables, and the film properties will be the explanatory variables. The GLM (Generalized Linear Model) for binary response variables, in this case Logistic Regression, will be used to investigate the relationship between categorical rating and film properties.
+In this analysis, the research question is to investigate which properties of films influence whether IMDB rating exceeding 7 or not. The binary rating (i.e., 1 if greater than 7 and 0 otherwise) will be the response variables, and the film properties will be the explanatory variables. The GLM (Generalized Linear Model) for binary response variables, Logistic Regression, will be used to investigate the relationship between binary rating and film properties.
 
 ```{r}
 #| echo: true
 #| warning: false
 #| label: tbl-dataset-head
-#| tbl-cap: First five entries of the IMDB Dataset
+#| tbl-cap: First five entries of the IMDB Dataset.
 
 library(tidyverse)
 library(gt)
@@ -47,13 +47,13 @@ df |>
 
 Description:
 
--   Film ID: The unique identifier for the film
--   Year: Year of release of the film in cinemas
--   Length: Duration (in minutes)
--   Budget: Budget for the films production (in \$1000000s)
--   Votes: Number of positive votes received by viewers
--   Genre: Genre of the film
--   Rating: IMDB rating from 0-10
+-   Film ID: The unique identifier for the film.
+-   Year: Year of release of the film in cinemas.
+-   Length: Duration (in minutes).
+-   Budget: Budget for the films production (in \$1000000).
+-   Votes: Number of positive votes received by viewers.
+-   Genre: Genre of the film.
+-   Rating: IMDB rating from 0-10.
 
 # Data Wrangling {#sec-data-wrangling}
 
@@ -82,7 +82,7 @@ library(zoo)
 #| echo: true
 #| warning: false
 #| label: fig-barplot1
-#| fig-cap: The number of NAs for each columns in the dataset.
+#| fig-cap: The number of NAs for each column in the dataset.
 #| fig-align: center
 #| message: false
 
@@ -106,9 +106,9 @@ text(x = bp,
      col = "red")
 ```
 
-There are 59 from 1945 (10.03%) rows are NA for column length. Moreover, they will be removed as the proportion is pretty small. Another reason is to avoid imputing not accurate information relative to other explanatory variables which might give impact to the statistical analysis result and conclusion.
+In the column length, there are 59 from 1945 (10.03%) rows containing NA values. Moreover, they will be removed as the proportion is pretty small. Another reason is to avoid imputing inaccurate information relative to other explanatory variables which might give impact to the statistical analysis result and conclusion.
 
-## Pre-processing Steps
+## Preprocessing Steps
 
 ```{r}
 #| echo: true
@@ -122,7 +122,7 @@ df <- df %>%
 df <- na.omit(df)
 ```
 
-The data pre-processing is performed to create new columns to categorize the rating is higher than 7 or not. If yes, it will be marked as 1, and 0 otherwise. Next, the rows which have NAs are being removed from the analysis. Later on, rating_higher_than_7 is going to be the response variable for the following Logistic Regression (GLM) analysis.
+The data preprocessing is performed to create new columns to categorize the rating is higher than 7 or not. If yes, it will be marked as 1, and 0 otherwise. Next, the rows which have NAs are being removed from the analysis. Later on, rating_higher_than_7 is going to be the response variable for the following Logistic Regression (GLM) analysis.
 
 # Exploratory Data Analysis {#sec-eda}
 
@@ -132,7 +132,7 @@ The data pre-processing is performed to create new columns to categorize the rat
 #| echo: true
 #| warning: false
 #| label: tbl-summary-stats
-#| tbl-cap: Summary statistics of the IMDB Dataset
+#| tbl-cap: Summary statistics of the IMDB Dataset.
 
 # Creating summary statistics
 
@@ -148,7 +148,9 @@ my_skim <- skim_with(base = sfl(n = length),
 knit_print(my_skim(IMDB ))
 ```
 
-Based on the summary tables, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then budget and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
+Based on the summary tables @tbl-summary-stats, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then budget and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
+
+\clearpage
 
 ## Correlation
 
@@ -183,7 +185,7 @@ From the @fig-heatmat1, it reveals that rating has a weak negative correlation (
 #| echo: true
 #| warning: false
 #| label: fig-scatterplot1
-#| fig-cap: The relationship between rating and explanatory variables.
+#| fig-cap: The relationship between rating and continuous explanatory variables.
 #| fig-align: center
 #| message: false
 
@@ -246,7 +248,7 @@ The red line is the indicator of rating equal to 7. Based on @fig-scatterplot1, 
 #| echo: false
 #| warning: false
 #| #| label: tbl-outliers
-#| tbl-cap: Films having votes greater than 60000
+#| tbl-cap: Films having votes greater than 60000.
 
 # Filter rows with votes > 60000
 df_filter <- df %>% 
@@ -254,7 +256,8 @@ df_filter <- df %>%
 
 # Filter columns to show
 df_filter %>% 
-  select(film_id, votes, rating)
+  select(film_id, votes, rating) %>%
+  kable()
 ```
 
 ## Boxplot and Barplot (Categorical Relationship)
@@ -263,7 +266,7 @@ df_filter %>%
 #| echo: true
 #| warning: false
 #| label: fig-boxplot1
-#| fig-cap: The relationship between categorical rating and explanatory variables.
+#| fig-cap: The relationship between binary rating and explanatory variables.
 #| fig-align: center
 #| fig-width: 7
 #| message: false
@@ -327,7 +330,7 @@ grid.arrange(arrangeGrob(p1, p2, p3, p4, ncol=2),
              p6, nrow=2, heights = c(2, 1))
 ```
 
-From the boxplot on the @fig-boxplot1, it is more clear to see that at least Budget and Length can distinguish the rating will be higher or lower than 7. This can be seen by comparing their median lines inside the box. Moreover, there are some points detected as outliers for length and votes.
+From the boxplot on the @fig-boxplot1, it is more clear to see that Budget and Length is more helpful to distinguish the rating will be higher or lower than 7. This can be seen by comparing their median lines inside the box. Moreover, there are a lot of points detected as outliers for length and votes.
 
 ## Barplot (Genre vs. Rating)
 
@@ -335,7 +338,7 @@ From the boxplot on the @fig-boxplot1, it is more clear to see that at least Bud
 #| echo: true
 #| warning: false
 #| label: fig-barplot2
-#| fig-cap: The proportion and average of rating for each genre
+#| fig-cap: The proportion and average of rating for each genre.
 #| fig-align: center
 #| message: false
 
@@ -366,7 +369,7 @@ ggplot(ratings_genre, aes(x = genre)) +
             vjust = -0.5, color = "black", size = 3.5)
 ```
 
-@fig-barplot2 shows that Action and Drama have a low proportion of having rating greater than 7, and their average of ratings are 4.63 and 4.14 respectively. The Short genre becomes the highest for both proportion and average of rating. Visually, genre is helpful to distinguish whether the rating will be high or low.
+@fig-barplot2 shows that Action (16%) and Drama (5%) have a low proportion of having rating greater than 7, and their average of ratings are 4.63 and 4.14 respectively. The Short genre becomes the highest for both proportion (97%) and average (7.98) of rating. Visually, genre is helpful to distinguish whether the rating will be high or low.
 
 # Statistical Analysis (GLM) {#sec-glm-analysis}
 
@@ -398,6 +401,8 @@ Furthermore, one caveat of using this model is genreAnimation and genreRomance a
 \clearpage
 
 ## Examination of the Final Model
+
+### Hypothesis Testing and Goodness of fit
 
 ```{r}
 #| echo: true
@@ -451,10 +456,13 @@ Based on the result @tbl-summary-glm, the log-odds coefficients associated with 
 # Hosmer-Lemeshow goodness of fit test
 
 source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
+
 HLTest(model, g=6)
 ```
 
 Next, Hosmer-Lemeshow goodness of fit test is performed. Large P-values indicates no evidence for lack of fit. However, some expected counts are less than 5, so the test might not be very reliable. As there is no evidence of lack of fit, explanatory variables are worth to be retained. Moreover, checking residuals for model diagnostic is not informative for binary response variable.
+
+### Odds-ratios
 
 ```{r}
 #| echo: true
@@ -471,7 +479,33 @@ plot_model(model, show.values=TRUE)
 
 According to @fig-oddratios, as length and budget increase, the odds of having rating greater 7 will be decreasing (multiply by 0.94) and increasing (multiply by 1.78) respectively. In this analysis, the baseline for Genre is Action. For Comedy, Documentary, and Short films, the odds ratios have values significantly higher than 1. For instance, Comedy's odds of having rating higher than 7 is 24.22 times those of Action films.
 
-Interestingly, the Animation's odds is 0.49 times to Action's odds, and this is not align with the fact that Animation's proportion (of having rating higher than 7) is bigger than Action. Then, we notice that Animation has a mean of length 19.92 min, which is lower than the overall mean, 82.29 min from @tbl-summary-stats. One hypothesis is that the model struggles in adequately balancing between length and genre variables during the model fitting process, with length gives a higher influence. However, Animation's odds is not statistically significant.
+Interestingly, the Animation's odds is 0.49 times to Action's odds, and this is not align with the fact that Animation's proportion (of having rating higher than 7) is bigger than Action. Moreover, we notice that Animation has a mean of length 19.92 min, which is lower than the overall mean, 82.29 min from @tbl-summary-stats. This is also already align with the negative correlation between length and rating which can be seen from @fig-heatmat1. One hypothesis, compared to other genres, Animation is very skewed in terms of length values, and its IQR is 15 times smaller than SD - @tbl-summary-genre-length. However, Animation's odds is not statistically significant.
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: tbl-summary-genre-length
+#| tbl-cap: Summary statistics of length for each genre.
+
+df |>
+   summarize('Mean' = mean(length),
+             'Median' = median(length),
+             'St.Dev' = sd(length),
+             'IQR' = quantile(length,0.75)-quantile(length,0.25),
+             'Sample_size' = n(),
+.by = genre) |>
+ gt() |>
+  fmt_number(decimals=2) |>
+  cols_label(
+    Mean = html("Mean"),
+    Median = html("Median"),
+    St.Dev = html("Std. Dev"),
+    IQR = html("Interquartile Range"),
+    Sample_size = html("Sample Size")
+  )
+```
+
+### Predicted Probabilities
 
 ```{r}
 #| echo: true
@@ -497,7 +531,7 @@ plot_model(model,type="pred",terms=c("length","genre"))
 plot_model(model,type="pred",terms=c("budget","genre"))
 ```
 
-Other than Romance genre, the probabilities of having rating higher than 7 decreasing by length and increasing by budget. It can also be seen from odds sign as well in @fig-oddratios. Moreover, we can also compare to @fig-barplot2 that Romance (0%), Drama (5%), and Action (16%) are the lowest in terms of proportion of having rating greater than 7, and this is align with their predicted probabilities. However, this is not the case for Animation predicted probabilities. It might be due to the conflict between GenreAnimation and length variables. For Romance, it will be always predicted to have rating lower than and equal to 7.
+Other than Romance genre, the probabilities of having rating higher than 7 decreasing by length and increasing by budget. It can also be seen from odds sign as well in @fig-oddratios. Moreover, we can also compare to @fig-barplot2 that Romance (0%), Drama (5%), and Action (16%) are the lowest in terms of proportion of having rating greater than 7, and this is align with their predicted probabilities. However, this is not the case for Animation predicted probabilities. For Romance, it will be always predicted to have rating lower than and equal to 7.
 
 ## Sanity Checking: Linear Regression
 
@@ -531,6 +565,8 @@ The model which has budget, length, and genre as the predictors is chosen to be 
 
 The caveat from this model that it has coefficients which are not statistically significant (genreAnimation and genreRomance). However, if genre is being removed, AIC will increase significantly. It is better to incorporate genre as predictors. The hypothesis on Hosmer-Lemeshow also shows no evidence for lack of fit.
 
+In summary, answering the research question, budget and length have significant relationship to binary rating, whether greater than 7 or not. For Genre, two of them are not significant.
+
 # Appendix {#sec-appendix}
 
 ```{r}
@@ -547,5 +583,5 @@ model_6 <- glm(rating_higher_than_7 ~ length + budget,
 
 # Display the model summary (log-odds)
 model_6 %>%
-  summ()
+  summ(model.info = FALSE)
 ```
