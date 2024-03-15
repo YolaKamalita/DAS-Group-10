@@ -1,0 +1,360 @@
+---
+title: "Analysis of IMDB Rating with GLM"
+format: pdf
+editor: visual
+number-sections: true
+---
+
+# Introduction {#sec-intro}
+
+Studying the factors that can affect film ratings is an interesting topic to be explored. IMDB dataset containing information about film rating and their properties, such as length or duration, budget, votes, year of release, and genre. There are 1495 films (Film ID) included in the dataset.
+
+In this analysis, the research question is to investigate which properties of films influence IMDB rating, specifically whether they are likely to be greater than 7 or not. The binary rating (i.e., 1 if greater than 7, 0 otherwise) will be the response variables, and the film properties will be the explanatory variables. The GLM (Generalized Linear Model) for binary response variables, in this case Logistic Regression, will be used to investigate the relationship between categorical rating and film properties.
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: tbl-dataset-head
+#| tbl-cap: First five entries of the IMDB Dataset
+
+library(tidyverse)
+library(gt)
+
+# Read CSV from data dir
+df <- read_csv("../data/dataset10.csv")
+
+# Display the first 5 rows
+df |> 
+  slice_head(n=5) |>
+  gt() |>
+  cols_label(
+    film_id = html("Film ID"),
+    year = html("Year"),
+    length = html("Length"),
+    budget = html("Budget"),
+    votes = html("Votes"),
+    genre = html("Genre"),
+    rating = html("Rating")
+  )
+```
+
+Description:
+
+-   Film ID: The unique identifier for the film
+-   Year: Year of release of the film in cinemas
+-   Length: Duration (in minutes)
+-   Budget: Budget for the films production (in \$1000000s)
+-   Votes: Number of positive votes received by viewers
+-   Genre: Genre of the film
+-   Rating: IMDB rating from 0-10
+
+# Data Wrangling
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Import Libraries
+
+library(skimr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(stats)
+library(jtools)
+library(sjPlot)
+library(broom)
+library(huxtable)
+```
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: fig-barplot1
+#| fig-cap: The number of NAs for each columns in the dataset.
+#| fig-align: center
+#| message: false
+
+# Calculate the number of NAs for each column
+
+# Checking NAs
+na_sum <- colSums(is.na(df))
+
+# Plotting number of NAs
+bp <- barplot(na_sum, 
+              main = "Missing Values Count", 
+              ylab = "Count",                
+              col = "skyblue",              
+              names.arg = colnames(df), 
+              ylim = c(0, max(na_sum) + 200), # space for labels
+              las=1) # rotating x-axis labels
+text(x = bp, 
+     y = na_sum + 2, 
+     labels = na_sum, 
+     pos = 3, 
+     col = "red")
+```
+
+There are 59 from 1945 (10.03%) rows are NA for column length. Moreover, they will be removed as the proportion is pretty small. Another reason is to avoid imputing not accurate information relative to other explanatory variables which might give impact to the statistical analysis result and conclusion.
+
+## Pre-processing Steps
+
+```{r}
+#| echo: true
+#| warning: false
+
+# Create new columns: rating_higher_than_7
+df <- df %>% 
+  mutate(rating_higher_than_7 = ifelse(rating <= 7, 0, 1))
+
+# Remove NAs
+df <- na.omit(df)
+```
+
+The data pre-processing is performed to create new columns to categorize the rating is higher than 7 or not. If yes, it will be marked as 1, and 0 otherwise. Next, the rows which have NAs are being removed from the analysis. Later on, rating_higher_than_7 is going to be the response variable for the following Logistic Regression (GLM) analysis.
+
+# Exploratory Data Analysis
+
+## Statistics Descriptive
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: tbl-summary-stats
+#| tbl-cap: Summary statistics of the IMDB Dataset
+
+# Creating summary statistics
+
+# Convert film_id and rating_higher_than_7 as categorical
+IMDB <- df
+IMDB <- IMDB %>%
+  mutate(film_id = as.character(film_id),
+         rating_higher_than_7 = as.character(rating_higher_than_7))
+
+# Summary statistics with adjusted skim()
+my_skim <- skim_with(base = sfl(n = length), 
+                     numeric = sfl(p0 = NULL, p100 = NULL,hist = NULL))
+knit_print(my_skim(IMDB ))
+```
+
+Based on the summary tables, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then budget and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
+
+## Correlation
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: fig-heatmat1
+#| fig-cap: The correlation between numerical variables.
+#| fig-align: center
+#| message: false
+
+# Calculate the correlation coefficient between numeric variables
+
+# Filter out non-numeric columns
+numeric_df <- df[sapply(df, is.numeric)]
+numeric_df <- numeric_df[, !names(numeric_df) %in% c("film_id", 
+                                                     "rating_higher_than_7")]
+
+# Compute correlation matrix
+correlation_matrix <- cor(numeric_df, use = "complete.obs")
+
+# Creating correlation heatmap
+corrplot(cor(numeric_df), method = "color", 
+         type = "lower", addCoef.col = 'grey')
+```
+
+From the @fig-heatmat1, it reveals that rating has a weak negative correlation (-0.47) to length, and has a weak positive correlation (0.25) to budget. Moreover, year and votes show a very weak negative correlation to the rating, -0.01 and -0.04 respectively. It means there is no film properties that can give strong signal (linearly) to the rating. Further investigation will be performed visually using @fig-scatterplot1.
+
+## Scatterplot (Continuous Relationship)
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: fig-scatterplot1
+#| fig-cap: The relationship between rating and explanatory variables.
+#| fig-align: center
+#| message: false
+
+# Creating scatterplot between rating and explanatory variables
+
+# Custom color palette
+custom_colors <- c("1" = "lightskyblue", "0" = "dodgerblue4")
+
+# Scatterplot Rating vs. Year with some adjustments
+p1 <- ggplot(df, aes(x = year, y = rating, 
+                     color = factor(rating_higher_than_7))) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = FALSE, color = "Orange") +
+  scale_color_manual(values = custom_colors) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Year", x = "Year", y = "Rating")
+
+# Scatterplot Rating vs. Length with some adjustments
+p2 <- ggplot(df, aes(x = length, y = rating, 
+                     color = factor(rating_higher_than_7))) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = FALSE, color = "Orange") +
+  scale_color_manual(values = custom_colors) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Length", x = "Length", y = "Rating")
+
+# Scatterplot Rating vs. Budget with some adjustments
+p3 <- ggplot(df, aes(x = budget, y = rating, 
+                     color = factor(rating_higher_than_7))) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = FALSE, color = "Orange") +
+  scale_color_manual(values = custom_colors) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Budget", x = "Budget", y = "Rating")
+
+# Scatterplot Rating vs. Votes with some adjustments
+p4 <- ggplot(df, aes(x = votes, y = rating, 
+                     color = factor(rating_higher_than_7))) +
+  geom_point() +
+  geom_hline(yintercept = 7, linetype = "dashed", color = "red") +
+  geom_smooth(method = "lm", se = FALSE, color = "Orange") +
+  scale_color_manual(values = custom_colors) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Rating vs Votes", x = "Votes", y = "Rating")
+
+# Plot in Grid
+grid.arrange(p1, p2, p3, p4, ncol=2)
+```
+
+The red line is the indicator of rating equal to 7. Based on @fig-scatterplot1, most of explanatory variables' values overlap to each other between rating greater and lower than 7. Hypothetically, it might affect the logistic regression performance. However, weak linear relationship to the rating is still noticeable for Budget and Length. Then, the points for year and rating scatterplot are very scattered, indicating very weak relationship between them. Furthermore, there are some outliers for votes showing films which have very high votes (greater than 60k), and interestingly they have ratings lower than 7. These are the Film IDs:
+
+```{r}
+#| echo: false
+#| warning: false
+#| #| label: tbl-outliers
+#| tbl-cap: Films having votes greater than 60000
+
+# Filter rows with votes > 60000
+df_filter <- df %>% 
+  filter(votes > 60000)
+
+# Filter columns to show
+df_filter %>% 
+  select(film_id, votes, rating)
+```
+
+## Boxplot and Barplot (Categorical Relationship)
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: fig-boxplot1
+#| fig-cap: The relationship between categorical rating and explanatory variables.
+#| fig-align: center
+#| fig-width: 7
+#| message: false
+
+# Creating boxplot and barplot between rating_higher_than_7 and explanatory variables
+
+# Custom color palette
+custom_colors <- c("1" = "lightskyblue", "0" = "dodgerblue4")
+
+# Boxplot Rating > 7 vs. Year with some adjustments
+p1 <- ggplot(data = df, 
+             mapping = aes(x = factor(rating_higher_than_7), 
+                           y = year,
+                           fill = factor(rating_higher_than_7))) +
+  geom_boxplot() +
+  labs(y = "Year", x = "Rating > 7") +
+  scale_fill_manual(values = custom_colors) +
+  theme(legend.position = "none") # remove legend
+
+# Boxplot Rating > 7 vs. Length with some adjustments
+p2 <- ggplot(data = df, 
+             mapping = aes(x = factor(rating_higher_than_7), 
+                           y = length,
+                           fill = factor(rating_higher_than_7))) +
+  geom_boxplot() +
+  labs(y = "Length", x = "Rating > 7") +
+  scale_fill_manual(values = custom_colors) +
+  theme(legend.position = "none") # remove legend
+
+# Boxplot Rating > 7 vs. Budget with some adjustments
+p3 <- ggplot(data = df, 
+             mapping = aes(x = factor(rating_higher_than_7), 
+                           y = budget,
+                           fill = factor(rating_higher_than_7))) +
+  geom_boxplot() +
+  labs(y = "Budget", x = "Rating > 7") +
+  scale_fill_manual(values = custom_colors) +
+  theme(legend.position = "none") # remove legend
+
+# Boxplot Rating > 7 vs. Votes with some adjustments
+p4 <- ggplot(data = df, 
+             mapping = aes(x = factor(rating_higher_than_7), 
+                           y = votes,
+                           fill = factor(rating_higher_than_7))) +
+  geom_boxplot() +
+  labs(y = "Votes", x = "Rating > 7") +
+  scale_fill_manual(values = custom_colors) +
+  theme(legend.position = "none") # remove legend
+
+# Barplot Rating > 7 vs. Genre with some adjustments
+p6 <- ggplot(df, aes(x = genre,  y = ..prop.., 
+                     group =factor(rating_higher_than_7), 
+                     fill = factor(rating_higher_than_7))) +
+  geom_bar(position="dodge", stat="count") +
+  labs(y = "Proportion", fill = "Rating > 7") +
+  scale_fill_manual(values = custom_colors) +
+  theme_minimal() 
+
+# Plot in Grid
+grid.arrange(arrangeGrob(p1, p2, p3, p4, ncol=2), 
+             p6, nrow=2, heights = c(2, 1))
+```
+
+From the boxplot on the @fig-boxplot1, it is more clear to see that at least Budget and Length can distinguish the rating will be higher or lower than 7. This can be seen by comparing their median lines inside the box. Moreover, there are some points detected as outliers for length and votes.
+
+## Barplot (Genre vs. Rating)
+
+```{r}
+#| echo: true
+#| warning: false
+#| label: fig-barplot2
+#| fig-cap: The proportion and average of rating for each genre
+#| fig-align: center
+#| message: false
+
+# Calculate proportions and average of ratings for each genre categories
+ratings_genre <- df %>%
+  group_by(genre) %>%
+  summarize(
+    proportion_higher_than_7 = round(mean(rating_higher_than_7, na.rm = TRUE),3),
+    average_rating = round(mean(rating, na.rm = TRUE),2)
+    ) %>%
+  ungroup() %>% # Grouping is removed so it can be sorted
+  arrange(desc(average_rating))
+
+# Create barplot
+ggplot(ratings_genre, aes(x = genre)) +
+  geom_bar(aes(y = proportion_higher_than_7), 
+           stat = "identity", fill = "skyblue", width = 0.5) +
+  geom_point(aes(y = average_rating),
+            stat="identity",color="red",size=2)+
+  labs(x = "Genre", y = "Proportions of Rating > 7",
+       title = "Rating vs. Genre") +
+  scale_y_continuous(sec.axis=sec_axis(~.,name="Average of Rating"),
+                     limits = c(0,9)) + # creating second y-axis
+  geom_text(aes(y = proportion_higher_than_7,
+                label = round(proportion_higher_than_7, 2)), 
+            vjust = -0.5, color = "black", size = 3.5) +
+  geom_text(aes(y = average_rating,label = average_rating), 
+            vjust = -0.5, color = "black", size = 3.5)
+```
+
+@fig-barplot2 shows that Action and Drama have a low proportion of having rating greater than 7, and their average of ratings are 4.63 and 4.14 respectively. The Short genre becomes the highest for both proportion and average of rating. Visually, genre is helpful to distinguish whether the rating will be high or low.
