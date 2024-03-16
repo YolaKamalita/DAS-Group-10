@@ -84,6 +84,8 @@ library(zoo)
 #| label: fig-barplot1
 #| fig-cap: The number of NAs for each column in the dataset.
 #| fig-align: center
+#| fig-width: 7
+#| fig-height: 3
 #| message: false
 
 # Calculate the number of NAs for each column
@@ -97,7 +99,7 @@ bp <- barplot(na_sum,
               ylab = "Count",                
               col = "skyblue",              
               names.arg = colnames(df), 
-              ylim = c(0, max(na_sum) + 200), # space for labels
+              ylim = c(0, max(na_sum) + 180), # space for labels
               las=1) # rotating x-axis labels
 text(x = bp, 
      y = na_sum + 2, 
@@ -150,8 +152,6 @@ knit_print(my_skim(IMDB ))
 
 Based on the summary tables @tbl-summary-stats, there is no duplication for the Film ID, and it means each observation is already unique. Then, the categorical explanatory variables, genre, has seven unique values. Furthermore, the votes has a very wide values by looking at the standard deviation, mean, and median. Year and length are slightly skewed to the left, and then budget and rating are slightly skewed to the right. It can be seen by comparing mean and median position.
 
-\clearpage
-
 ## Correlation
 
 ```{r}
@@ -168,10 +168,8 @@ Based on the summary tables @tbl-summary-stats, there is no duplication for the 
 numeric_df <- df[sapply(df, is.numeric)]
 numeric_df <- numeric_df[, !names(numeric_df) %in% c("film_id", 
                                                      "rating_higher_than_7")]
-
 # Compute correlation matrix
 correlation_matrix <- cor(numeric_df, use = "complete.obs")
-
 # Creating correlation heatmap
 corrplot(cor(numeric_df), method = "color", 
          type = "lower", addCoef.col = 'grey')
@@ -253,7 +251,6 @@ The red line is the indicator of rating equal to 7. Based on @fig-scatterplot1, 
 # Filter rows with votes > 60000
 df_filter <- df %>% 
   filter(votes > 60000)
-
 # Filter columns to show
 df_filter %>% 
   select(film_id, votes, rating) %>%
@@ -415,6 +412,8 @@ model %>%
   summ()
 ```
 
+\clearpage
+
 ```{r}
 #| echo: true
 #| warning: false
@@ -448,6 +447,8 @@ $$
 $$
 
 Based on the result @tbl-summary-glm, the log-odds coefficients associated with the budget variable is positive. This suggests that as the budget values increase, the likelihood of the rating greater than 7 also increases. Furthermore, the log-odds coefficients for length is negative, and it indicates that the lower the values, the rating to be higher than 7 is more likely. @tbl-summary-glm2 shows that these two coefficients are statistically significant because the P-values are lower than 0.05 and practically significant because Confidence Intervals (CI) do not contain 0. There are two coefficients which are not statistically significant, genreAnimation and genreRomance.
+
+\clearpage
 
 ```{r}
 #| echo: true
@@ -505,6 +506,8 @@ df |>
   )
 ```
 
+\clearpage
+
 ### Predicted Probabilities
 
 ```{r}
@@ -514,6 +517,8 @@ df |>
 #| fig-cap: Predicted probabilities of rating higher than 7 for budget and genre.
 #| fig-align: center
 #| message: false
+#| fig-width: 5
+#| fig-height: 3
 
 # Plot predicted probabilities of having rating higher than 7
 plot_model(model,type="pred",terms=c("length","genre"))
@@ -526,6 +531,8 @@ plot_model(model,type="pred",terms=c("length","genre"))
 #| fig-cap: Predicted probabilities of rating higher than 7 for length and genre.
 #| fig-align: center
 #| message: false
+#| fig-width: 5
+#| fig-height: 3
 
 # Plot predicted probabilities of having rating higher than 7
 plot_model(model,type="pred",terms=c("budget","genre"))
