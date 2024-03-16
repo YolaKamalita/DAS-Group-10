@@ -53,7 +53,7 @@ Description:
 /DAS-Group-10
 ├── README.md
 ├── data/
-│   └──dataset10.csv
+│   └── dataset10.csv
 ├── pdf/
 │   ├── Group_10_Presentation.pdf
 │   ├── Group_10_qmd.pdf
